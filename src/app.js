@@ -238,6 +238,19 @@ function settleWorkerRequest(message) {
   return true;
 }
 
+function rejectWorkerRequests(name, errorMessage) {
+  const fallbackMessage = errorMessage || `The ${name} worker failed.`;
+
+  for (const [requestId, pending] of appState.pending.entries()) {
+    if (!requestId.startsWith(`${name}-`)) {
+      continue;
+    }
+
+    appState.pending.delete(requestId);
+    pending.reject(new Error(fallbackMessage));
+  }
+}
+
 function updateWorkerStatus(name, payload) {
   const status = appState.models[name];
   if (!status) {
@@ -339,10 +352,20 @@ function handleWorkerMessage(name, message) {
 Object.entries(workers).forEach(([name, worker]) => {
   worker.addEventListener("message", (event) => handleWorkerMessage(name, event.data));
   worker.addEventListener("error", (event) => {
+    rejectWorkerRequests(name, event.message || `The ${name} worker failed.`);
     recordError(`${name} worker error`, event);
     updateWorkerStatus(name, {
       stage: "error",
       message: event.message || `The ${name} worker failed.`
+    });
+  });
+  worker.addEventListener("messageerror", () => {
+    const message = `The ${name} worker sent an unreadable response.`;
+    rejectWorkerRequests(name, message);
+    recordError(`${name} worker message error`, new Error(message));
+    updateWorkerStatus(name, {
+      stage: "error",
+      message
     });
   });
 });
