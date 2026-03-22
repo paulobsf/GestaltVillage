@@ -1,0 +1,10 @@
+{
+  "name": "gestalt-village",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node dev/dev-server.mjs",
+    "start": "node dev/dev-server.mjs",
+    "check": "node dev/check.mjs"
+  }
+}

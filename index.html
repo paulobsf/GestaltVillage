@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Gestalt Village</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <section id="load-screen" class="screen intro-screen">
+      <div class="intro-card">
+        <div class="intro-layout">
+          <div>
+            <p class="eyebrow">Browser-native multi-agent simulation</p>
+            <h1>Gestalt Village</h1>
+            <p class="header-copy">
+              Load the model once, then generate a small local social simulation where
+              agents move, remember, and talk directly in your browser.
+            </p>
+            <div class="boot-actions">
+              <button id="load-model-button" class="boot-button" type="button" data-state="idle">
+                <span id="load-model-label">Boot Model</span>
+              </button>
+              <p class="boot-caption">Loads once, then opens the village workspace.</p>
+            </div>
+            <div id="compatibility-note" class="note warning hidden"></div>
+          </div>
+
+          <div class="boot-visual">
+            <div class="signal-card">
+              <div class="signal-header">
+                <span>Village runtime</span>
+                <strong>Local model boot</strong>
+              </div>
+              <div class="signal-grid">
+                <div class="signal-cell">
+                  <span>Model</span>
+                  <strong id="boot-model-name">Simulation model</strong>
+                </div>
+                <div class="signal-cell">
+                  <span>Mode</span>
+                  <strong id="boot-model-device">WebGPU</strong>
+                </div>
+                <div class="signal-cell signal-cell-wide">
+                  <span>Status</span>
+                  <p id="progress-meter" class="boot-meter-copy">Awaiting model load.</p>
+                </div>
+              </div>
+              <div class="boot-map">
+                <span class="boot-room"></span>
+                <span class="boot-room"></span>
+                <span class="boot-room"></span>
+                <span class="boot-room"></span>
+                <span class="boot-path"></span>
+                <span class="boot-path"></span>
+                <span class="boot-agent"></span>
+                <span class="boot-agent"></span>
+                <span class="boot-agent"></span>
+                <span class="boot-agent"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div id="app-screen" class="app-shell hidden">
+      <header class="header">
+        <div class="header-title">
+          <p class="eyebrow">Browser-native multi-agent simulation</p>
+          <h1>Gestalt Village</h1>
+          <p class="header-copy">
+            Describe a place, then watch a small cast of local agents move, talk,
+            remember, and change their relationships over time.
+          </p>
+        </div>
+        <div class="header-meta">
+          <div class="meta-card">
+            <span>Model</span>
+            <strong id="model-chip-name">Local model</strong>
+            <span id="model-chip-detail">loading\u2026</span>
+          </div>
+          <div class="meta-card live">
+            <span>Runtime</span>
+            <strong id="local-status">Running locally</strong>
+            <span id="network-status">0 network requests</span>
+          </div>
+          <div class="meta-card" id="convo-status-card">
+            <span>Active scene</span>
+            <strong id="convo-status-text">Waiting for agents to meet</strong>
+          </div>
+          <div class="meta-card">
+            <span>Token Estimate</span>
+            <strong id="token-count">0</strong>
+            <span>browser model telemetry</span>
+          </div>
+        </div>
+      </header>
+
+      <section id="prompt-panel" class="prompt-panel">
+        <div class="prompt-panel-header">
+          <div>
+            <label id="scenario-label" for="scenario-input">Describe the setting and its inhabitants</label>
+            <p id="scenario-summary" class="prompt-summary hidden"></p>
+          </div>
+          <button id="toggle-prompt-button" class="prompt-toggle ghost hidden" type="button">Edit Setup</button>
+        </div>
+        <div id="prompt-panel-body">
+          <div id="prompt-editor" class="prompt-row">
+            <textarea id="scenario-input" rows="4" placeholder="A small startup. Maya is the CTO..."></textarea>
+            <button id="generate-button" class="primary-button">Generate world</button>
+          </div>
+          <div id="prompt-runtime-controls" class="control-row">
+            <div class="model-progress">
+              <div class="progress-copy">
+                <span>Local model cache</span>
+                <strong id="model-status">Ready from cache</strong>
+              </div>
+              <div id="model-details" class="model-details"></div>
+              <div class="progress-bar"><span id="progress-bar-fill"></span></div>
+            </div>
+            <div class="simulation-controls">
+              <button data-speed="0" class="control-button" id="pause-button">Pause</button>
+              <button data-speed="1" class="control-button active" id="play-button">Play</button>
+              <button data-speed="2" class="control-button" id="fast-button">Fast</button>
+              <button class="control-button" id="screenshot-button">Screenshot</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="workspace">
+        <section class="panel world-panel">
+          <div class="panel-header">
+            <div>
+              <h2>World view</h2>
+              <p id="world-caption">Generate a scenario to start the village.</p>
+            </div>
+            <div class="tick-chip">Tick <span id="tick-count">0</span></div>
+          </div>
+          <canvas id="world-canvas" width="960" height="620"></canvas>
+          <div class="world-legend">
+            <span><i class="legend-dot thought"></i> click a resident to inspect thought, memory, and trust</span>
+            <span><i class="legend-dot speech"></i> active dialogue appears above each sprite in-world</span>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <div>
+              <h2>Agent inspector</h2>
+              <p>Thoughts, memories, and relationships.</p>
+            </div>
+          </div>
+          <div id="inspector-empty" class="empty-state">Select a resident on the map to inspect thoughts, memory, and relationships.</div>
+          <div id="inspector-content" class="hidden">
+            <div class="agent-hero">
+              <div id="agent-badge" class="agent-badge"></div>
+              <div>
+                <h3 id="agent-name"></h3>
+                <p id="agent-role"></p>
+              </div>
+            </div>
+            <div class="summary-grid">
+              <div id="agent-status-card" class="summary-card">
+                <span class="status-label">Status</span>
+                <strong id="agent-status"></strong>
+                <p id="agent-status-detail"></p>
+              </div>
+              <div id="agent-focus-card" class="summary-card active">
+                <span class="status-label">Focus</span>
+                <strong id="agent-goal-title"></strong>
+                <p id="agent-goal"></p>
+              </div>
+              <div id="agent-pressure-card" class="summary-card">
+                <span class="status-label">Pressure</span>
+                <strong id="agent-pressure-title"></strong>
+                <p id="agent-secret"></p>
+              </div>
+            </div>
+            <div class="inspector-section">
+              <h4>Current thought</h4>
+              <p id="agent-thought"></p>
+            </div>
+            <div class="inspector-section">
+              <h4>Persona</h4>
+              <p id="agent-personality"></p>
+            </div>
+            <div id="agent-speech-section" class="inspector-section hidden">
+              <h4>Current speech</h4>
+              <p id="agent-speech" class="agent-speech-live"></p>
+            </div>
+            <div class="inspector-section">
+              <h4>Private office</h4>
+              <label for="office-input">Talk directly to the selected agent</label>
+              <div class="office-composer">
+                <textarea id="office-input" rows="3" placeholder="Ask what they are worried about, what they are hiding, or what they need."></textarea>
+                <button id="office-send-button" class="primary-button office-button">Talk</button>
+              </div>
+            </div>
+            <div class="inspector-section">
+              <h4>Key relationships</h4>
+              <div id="relationship-list" class="stack-list"></div>
+            </div>
+            <div class="inspector-section">
+              <h4>Recent signals</h4>
+              <div id="memory-list" class="stack-list"></div>
+            </div>
+            <details id="agent-debug-panel" class="debug-panel">
+              <summary>Agent debug</summary>
+              <div id="agent-diagnostics" class="debug-list"></div>
+            </details>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <div>
+              <h2>Conversation log</h2>
+              <p>Transcripts first, deeper debugging only when you need it.</p>
+            </div>
+            <div class="log-filter-row">
+              <button id="log-latest-button" class="control-button active" type="button">Latest</button>
+              <button id="log-full-button" class="control-button" type="button">Full history</button>
+            </div>
+          </div>
+          <div class="telemetry-grid">
+            <div class="telemetry-card">
+              <span class="status-label">Model health</span>
+              <strong id="telemetry-model-summary">Loading</strong>
+              <span id="telemetry-model-detail">Waiting for model boot.</span>
+            </div>
+            <div class="telemetry-card">
+              <span class="status-label">Runtime</span>
+              <strong id="telemetry-runtime-summary">Tick 0</strong>
+              <span id="telemetry-runtime-detail">No active scene.</span>
+            </div>
+            <div class="telemetry-card">
+              <span class="status-label">Conversations</span>
+              <strong id="telemetry-conversation-summary">0 total</strong>
+              <span id="telemetry-conversation-detail">last -</span>
+            </div>
+            <div class="telemetry-card telemetry-card-wide">
+              <span class="status-label">Live bubble</span>
+              <strong id="telemetry-live-speaker">No active speech</strong>
+              <p id="telemetry-live-text">The full current speech line appears here.</p>
+            </div>
+            <div id="telemetry-active-scene-card" class="telemetry-card telemetry-card-wide hidden">
+              <span class="status-label">Active scene</span>
+              <strong id="telemetry-active-scene-title">No active conversation</strong>
+              <p id="telemetry-active-scene-detail"></p>
+            </div>
+          </div>
+          <details id="telemetry-debug-panel" class="debug-panel">
+            <summary>Debug stream</summary>
+            <div class="telemetry-row">
+              <span id="telemetry-repeat-count">0 repeats / 0 blocked</span>
+              <span id="telemetry-error-count">0 client errors</span>
+              <span id="telemetry-reflection-count">0 reflections</span>
+              <span id="telemetry-conversation-count">0 conversations</span>
+              <span id="telemetry-memory-count">0 memory writes</span>
+            </div>
+            <div class="telemetry-row">
+              <span id="telemetry-reflection-latency">reflection -</span>
+              <span id="telemetry-conversation-latency">conversation -</span>
+              <span id="telemetry-memory-latency">memory -</span>
+            </div>
+            <div class="prompt-trace-block">
+              <strong>Prompt traces (debug)</strong>
+              <div id="prompt-trace-stream" class="telemetry-stream prompt-trace-stream"></div>
+            </div>
+            <div id="telemetry-stream" class="telemetry-stream"></div>
+          </details>
+          <div id="conversation-log" class="conversation-log"></div>
+        </section>
+      </div>
+    </div>
+
+    <template id="log-entry-template">
+      <article class="log-entry">
+        <div class="log-meta"></div>
+        <div class="log-body"></div>
+      </article>
+    </template>
+
+    <script type="module" src="src/app.js"></script>
+  </body>
+</html>
